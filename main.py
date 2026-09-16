@@ -91,21 +91,7 @@ class FeedbackRequest(BaseModel):
 
 
 def call_llm(log_text: str, matched_incident: Optional[dict], detected_source: str) -> dict:
-    """
-    Sends the log to an LLM and returns the parsed JSON diagnosis.
-
-    Default: Groq's free tier via its OpenAI-compatible endpoint — no
-    card required, 1,000 requests/day. Uses the OpenAI SDK pointed at
-    a different base_url, so swapping to real OpenAI, Together, or a
-    hackathon sponsor's credits later is a one-line change (just drop
-    the base_url override and use the right key/model).
-
-    If a similar past incident was retrieved (see rag.py), it's added
-    as grounding context so the model can reason from a real precedent
-    instead of purely general knowledge. The detected source (see
-    log_source.py) is passed as a hint so the model applies the right
-    mental model (Terraform vs Kubernetes vs cloud CLI, etc.).
-    """
+   
     api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
         raise HTTPException(
@@ -168,6 +154,13 @@ def diagnose(request: DiagnoseRequest):
     source = detect_source(request.log)
     matched_incident = reference_store.find_best_match(request.log)
     result = call_llm(request.log, matched_incident, source)
+
+    # Normalize suggested_fix: the LLM sometimes returns a list of steps
+    # instead of a single string, since the prompt says "as a short numbered list"
+    if isinstance(result.get("suggested_fix"), list):
+        result["suggested_fix"] = "\n".join(
+            f"{i+1}. {step}" for i, step in enumerate(result["suggested_fix"])
+        )
 
     # Fill in any missing keys defensively so the response model doesn't 500
     # if the model drops a field.
