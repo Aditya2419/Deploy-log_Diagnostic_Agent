@@ -1,0 +1,23 @@
+[
+  {
+    "id": "iam-s3-putobject-denied",
+    "category": "IAM/permissions",
+    "log_excerpt": "AccessDenied when calling PutObject on S3 bucket from Lambda execution role, missing s3:PutObject in identity-based policy",
+    "root_cause": "The Lambda execution role's IAM policy did not grant s3:PutObject on the target bucket/prefix. This typically happens when a bucket policy is updated but the role's own policy isn't, or a new prefix is added without updating the scoped resource ARN.",
+    "fix": "Add an inline or managed policy statement granting s3:PutObject (and s3:PutObjectAcl if ACLs are used) scoped to the specific bucket ARN and prefix, then redeploy. Avoid wildcarding the resource ARN beyond what's needed."
+  },
+  {
+    "id": "apigateway-to-lambda-function-url",
+    "category": "configuration",
+    "log_excerpt": "API Gateway integration failing intermittently or adding unwanted cost/latency for a simple single-Lambda endpoint",
+    "root_cause": "API Gateway was being used for a simple single-function HTTP endpoint, adding unnecessary complexity (stages, resource policies, mapping templates) for a use case that doesn't need REST API features like custom domains, request validation, or multiple routes.",
+    "fix": "Replace API Gateway with a Lambda Function URL for single-endpoint use cases. It removes the extra hop, simplifies IAM (resource-based policy on the function instead of API Gateway execution role), and cuts cost for low-traffic endpoints."
+  },
+  {
+    "id": "terraform-state-deletion-recovery",
+    "category": "state-management",
+    "log_excerpt": "Terraform state file corrupted or accidentally deleted locally, resources exist in cloud but are no longer tracked in state",
+    "root_cause": "Local state file was deleted or corrupted without a remote backend (e.g. S3 + DynamoDB lock table) configured, so there was no recoverable source of truth for what Terraform believed existed.",
+    "fix": "Recreate the state using `terraform import` for each existing resource by its cloud ID, or restore from a remote backend's versioning (S3 bucket versioning) if one was configured. Going forward, always configure a remote backend with state locking before running apply on shared infrastructure."
+  }
+]

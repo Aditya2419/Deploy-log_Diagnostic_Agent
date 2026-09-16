@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deploy-log Diagnostic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #12141c;
+    --surface: #1a1e29;
+    --surface-raised: #212636;
+    --border: #2a2f3f;
+    --text: #e8e6e1;
+    --text-muted: #8b8fa3;
+    --high: #4fb286;
+    --medium: #d9a441;
+    --low: #c96a4f;
+    --category: #6b8fd4;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    line-height: 1.5;
+  }
+
+  .wrap {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+  }
+
+  header {
+    margin-bottom: 32px;
+  }
+
+  h1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+
+  header p {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin: 0;
+  }
+
+  .prompt-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 180px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 14px;
+    resize: vertical;
+  }
+
+  textarea:focus {
+    outline: none;
+    border-color: var(--category);
+  }
+
+  button {
+    margin-top: 12px;
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    border-radius: 2px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 20px;
+    cursor: pointer;
+  }
+
+  button:hover { background: #fff; }
+  button:disabled { background: var(--border); color: var(--text-muted); cursor: default; }
+
+  button:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--category);
+    outline-offset: 2px;
+  }
+
+  .sample-links {
+    margin-top: 10px;
+    font-size: 12px;
+  }
+
+  .sample-links button {
+    background: none;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    font-weight: 400;
+    font-size: 12px;
+    padding: 5px 10px;
+    margin: 0 6px 0 0;
+  }
+
+  .sample-links button:hover {
+    color: var(--text);
+    border-color: var(--text-muted);
+    background: none;
+  }
+
+  .result {
+    margin-top: 36px;
+    border-top: 1px solid var(--border);
+    padding-top: 28px;
+  }
+
+  .result.hidden { display: none; }
+
+  .row {
+    margin-bottom: 22px;
+  }
+
+  .label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  .failure-summary {
+    font-size: 17px;
+    font-weight: 500;
+  }
+
+  .confidence-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+
+  .badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 3px 9px;
+    border-radius: 2px;
+    border: 1px solid;
+  }
+
+  .badge.high { color: var(--high); border-color: var(--high); }
+  .badge.medium { color: var(--medium); border-color: var(--medium); }
+  .badge.low { color: var(--low); border-color: var(--low); }
+  .badge.category { color: var(--category); border-color: var(--category); }
+
+  .fix-list {
+    margin: 0;
+    padding-left: 20px;
+  }
+
+  .fix-list li {
+    margin-bottom: 6px;
+  }
+
+  pre.command {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--high);
+    border-radius: 2px;
+    padding: 12px 14px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    overflow-x: auto;
+    position: relative;
+  }
+
+  .copy-btn {
+    margin-top: 8px;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 400;
+    padding: 5px 10px;
+  }
+
+  .copy-btn:hover {
+    color: var(--text);
+    background: none;
+    border-color: var(--text-muted);
+  }
+
+  .matched-note {
+    font-size: 13px;
+    color: var(--text-muted);
+    padding: 10px 12px;
+    background: var(--surface);
+    border-left: 3px solid var(--category);
+    border-radius: 2px;
+  }
+
+  .matched-note strong { color: var(--text); }
+
+  .error-box {
+    margin-top: 20px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border-left: 3px solid var(--low);
+    border-radius: 2px;
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  .loading {
+    margin-top: 20px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Deploy-log Diagnostic</h1>
+    <p>Paste a deployment or build log. Get a root-cause read, not just a stack trace.</p>
+  </header>
+
+  <div class="prompt-label">Log input</div>
+  <textarea id="logInput" placeholder="Paste a raw deployment, build, or crash log here..."></textarea>
+
+  <div class="sample-links">
+    <button type="button" onclick="loadSample('iam')">Sample: IAM denial</button>
+    <button type="button" onclick="loadSample('terraform')">Sample: Terraform lock</button>
+    <button type="button" onclick="loadSample('k8s')">Sample: K8s OOMKilled</button>
+    <button type="button" onclick="loadSample('cicd')">Sample: missing CI secret</button>
+  </div>
+  <br>
+  <button id="diagnoseBtn" onclick="diagnose()">Diagnose</button>
+
+  <div id="loading" class="loading" style="display:none;">Reading the log...</div>
+  <div id="errorBox" class="error-box" style="display:none;"></div>
+
+  <div id="result" class="result hidden">
+    <div class="row">
+      <div class="label">Failure</div>
+      <div id="failureSummary" class="failure-summary"></div>
+    </div>
+
+    <div class="confidence-row">
+      <span id="confidenceBadge" class="badge"></span>
+      <span id="categoryBadge" class="badge category"></span>
+      <span id="sourceBadge" class="badge category"></span>
+    </div>
+
+    <div class="row">
+      <div class="label">Root cause</div>
+      <div id="rootCause"></div>
+    </div>
+
+    <div class="row">
+      <div class="label">Suggested fix</div>
+      <ol id="fixList" class="fix-list"></ol>
+    </div>
+
+    <div class="row" id="fixCommandRow">
+      <div class="label">Fix command</div>
+      <pre class="command"><code id="fixCommand"></code></pre>
+      <button class="copy-btn" onclick="copyCommand()">Copy</button>
+    </div>
+
+    <div class="row" id="matchedRow" style="display:none;">
+      <div class="matched-note" id="matchedNote"></div>
+    </div>
+
+    <div class="row">
+      <div class="label">Was this diagnosis useful?</div>
+      <button class="copy-btn" onclick="sendFeedback('up')">Yes</button>
+      <button class="copy-btn" onclick="sendFeedback('down')">No</button>
+      <span id="feedbackThanks" style="display:none; margin-left:8px; color: var(--text-muted); font-size: 13px;">Thanks — recorded.</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API_URL = "http://127.0.0.1:8000/diagnose";
+  const FEEDBACK_URL = "http://127.0.0.1:8000/feedback";
+  let lastLog = "";
+  let lastDiagnosis = null;
+
+  const samples = {
+    iam: `2026-09-10T14:22:31Z [ERROR] Lambda invocation failed
+An error occurred (AccessDenied) when calling the PutObject operation:
+User: arn:aws:sts::482910337215:assumed-role/contact-form-lambda-role/contact-form-handler
+is not authorized to perform: s3:PutObject on resource:
+"arn:aws:s3:::contact-form-uploads-prod/submissions/2026-09-10/entry-8841.json"
+because no identity-based policy allows the s3:PutObject action`,
+    terraform: `Error: Error acquiring the state lock
+
+Error message: ConditionalCheckFailedException: The conditional request failed
+Lock Info:
+  ID:        7f3a9c21-88bb-4e2a-9c11-2d4b6e8a0f31
+  Path:      terraform-state-prod/network/terraform.tfstate
+  Operation: OperationTypeApply
+  Who:       ci-runner@github-actions-runner-42`,
+    k8s: `kubectl describe pod cost-dashboard-api-7d9f8c5b6-x2vqp -n production
+
+Status: Running
+Containers:
+  api:
+    State: Waiting
+      Reason: CrashLoopBackOff
+    Last State: Terminated
+      Reason: OOMKilled
+      Exit Code: 137
+    Restart Count: 14
+    Limits:
+      memory: 128Mi
+    Requests:
+      memory: 64Mi`,
+    cicd: `Step 5/9 : ENV AZURE_CLIENT_SECRET=$AZURE_CLIENT_SECRET
+Step 6/9 : RUN npm run build
+Error: Missing required environment variable AZURE_CLIENT_SECRET
+    at validateConfig (/app/src/config/azure.js:12:11)
+npm ERR! code ELIFECYCLE
+Process completed with exit code 1.`
+  };
+
+  function loadSample(key) {
+    document.getElementById('logInput').value = samples[key];
+  }
+
+  async function diagnose() {
+    const log = document.getElementById('logInput').value.trim();
+    const btn = document.getElementById('diagnoseBtn');
+    const loading = document.getElementById('loading');
+    const errorBox = document.getElementById('errorBox');
+    const result = document.getElementById('result');
+
+    errorBox.style.display = 'none';
+    result.classList.add('hidden');
+
+    if (!log) {
+      errorBox.textContent = 'Paste a log first — there\'s nothing to diagnose yet.';
+      errorBox.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    loading.style.display = 'block';
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ log })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Server responded with ${res.status}`);
+      }
+
+      const data = await res.json();
+      lastLog = log;
+      lastDiagnosis = data;
+      renderResult(data);
+    } catch (err) {
+      errorBox.textContent = `Couldn't reach the diagnosis backend: ${err.message}. Is uvicorn running on port 8000?`;
+      errorBox.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      loading.style.display = 'none';
+    }
+  }
+
+  function renderResult(data) {
+    document.getElementById('failureSummary').textContent = data.failure_summary;
+    document.getElementById('rootCause').textContent = data.root_cause;
+
+    const confBadge = document.getElementById('confidenceBadge');
+    confBadge.textContent = `confidence: ${data.confidence}`;
+    confBadge.className = `badge ${data.confidence}`;
+
+    document.getElementById('categoryBadge').textContent = data.category;
+    document.getElementById('sourceBadge').textContent = `source: ${data.detected_source}`;
+    document.getElementById('feedbackThanks').style.display = 'none';
+
+    const fixList = document.getElementById('fixList');
+    fixList.innerHTML = '';
+    const steps = String(data.suggested_fix).split(/\n|(?=\d\.\s)/).map(s => s.replace(/^\d+\.\s*/, '').trim()).filter(Boolean);
+    steps.forEach(step => {
+      const li = document.createElement('li');
+      li.textContent = step;
+      fixList.appendChild(li);
+    });
+
+    const fixCommandRow = document.getElementById('fixCommandRow');
+    if (data.fix_command) {
+      document.getElementById('fixCommand').textContent = data.fix_command;
+      fixCommandRow.style.display = 'block';
+    } else {
+      fixCommandRow.style.display = 'none';
+    }
+
+    const matchedRow = document.getElementById('matchedRow');
+    if (data.matched_past_incident_id) {
+      const pct = Math.round(data.matched_past_incident_similarity * 100);
+      document.getElementById('matchedNote').innerHTML =
+        `<strong>Matched a past incident</strong> — "${data.matched_past_incident_id}" (${pct}% similarity)`;
+      matchedRow.style.display = 'block';
+    } else {
+      matchedRow.style.display = 'none';
+    }
+
+    document.getElementById('result').classList.remove('hidden');
+  }
+
+  function copyCommand() {
+    const text = document.getElementById('fixCommand').textContent;
+    navigator.clipboard.writeText(text);
+    const btn = document.querySelector('.copy-btn');
+    const original = btn.textContent;
+    btn.textContent = 'Copied';
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  }
+
+  async function sendFeedback(rating) {
+    if (!lastDiagnosis) return;
+    try {
+      await fetch(FEEDBACK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          diagnosis_id: lastDiagnosis.diagnosis_id,
+          log: lastLog,
+          diagnosis: lastDiagnosis,
+          rating: rating
+        })
+      });
+      document.getElementById('feedbackThanks').style.display = 'inline';
+    } catch (err) {
+      // Feedback failing shouldn't disrupt the demo — fail silently.
+    }
+  }
+</script>
+
+</body>
+</html>
